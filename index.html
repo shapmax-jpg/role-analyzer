@@ -203,10 +203,7 @@
       <div class="card" id="d-responsibilities"></div>
       <div class="card" id="d-qualifications"></div>
     </div>
-    <div class="grid-2" style="margin-bottom:1rem;">
-      <div class="card" id="d-keywords-card"></div>
-      <div class="card" id="d-capabilities-card"></div>
-    </div>
+    <div class="card" id="d-gap-flags" style="margin-bottom:1rem;"></div>
 
     <div class="card" style="margin-bottom:1rem;">
       <div class="card-title">Fit rationale <span class="save-indicator" id="rationale-saved"></span></div>
@@ -533,6 +530,14 @@ async function analyzePosting(id) {
   }
 }
 
+
+function matchesProfile(phrase) {
+  const p = phrase.toLowerCase();
+  return PROFILE.skills.some(s => p.includes(s) || s.includes(p) || s.split(' ').some(w => w.length > 3 && p.includes(w))) ||
+    PROFILE.capabilities.some(c => c.toLowerCase().split(' ').slice(0,4).some(w => w.length > 3 && p.includes(w))) ||
+    PROFILE.differentiators.some(d => d.toLowerCase().split(' ').slice(0,4).some(w => w.length > 3 && p.includes(w)));
+}
+
 // ── DETAIL VIEW ───────────────────────────────────────────────────────────────
 function openDetail(id) {
   const p=postings.find(x=>x.id===id); if(!p)return;
@@ -550,22 +555,12 @@ function openDetail(id) {
   document.getElementById('d-badges').innerHTML=badges.join('');
   document.getElementById('d-fit-editor').innerHTML=['High','Medium','Low'].map(v=>`<button class="fit-opt ${p.fit===v?'selected-'+v.toLowerCase():''}" onclick="setFitDetail('${id}','${v}')">${v}</button>`).join('')+(p.fit?`<button class="fit-opt" onclick="setFitDetail('${id}',null)" style="font-size:10px;color:var(--text3);">✕</button>`:'');
   const resp=a&&!a._error?(a.responsibilities||[]):[];
-  document.getElementById('d-responsibilities').innerHTML=`<div class="card-title">Responsibilities</div>${resp.length?'<div style="display:flex;flex-wrap:wrap;gap:6px;">'+resp.map(r=>`<span class="pill">${esc(r)}</span>`).join('')+'</div>':'<div style="font-size:12px;color:var(--text3);">'+(a?'None extracted.':'Analyzing…')+'</div>'}`;
+  document.getElementById('d-responsibilities').innerHTML=`<div class="card-title">Responsibilities</div>${resp.length?'<div style="display:flex;flex-direction:column;gap:6px;">'+resp.map(r=>{const match=matchesProfile(r);return `<div style="font-size:13px;padding:6px 10px;border-radius:var(--radius-sm);background:${match?'var(--green-bg)':'var(--red-bg)'};color:${match?'var(--green)':'var(--red)'};">${esc(r)}</div>`;}).join('')+'</div>':'<div style="font-size:12px;color:var(--text3);">'+(a?'None extracted.':'Analyzing…')+'</div>'}`;
   const quals=a&&!a._error?(a.qualifications||[]):[];
-  document.getElementById('d-qualifications').innerHTML=`<div class="card-title">Qualifications</div>${quals.length?'<div style="display:flex;flex-wrap:wrap;gap:6px;">'+quals.map(q=>`<span class="pill">${esc(q)}</span>`).join('')+'</div>':'<div style="font-size:12px;color:var(--text3);">'+(a?'None extracted.':'Analyzing…')+'</div>'}`;
+  document.getElementById('d-qualifications').innerHTML=`<div class="card-title">Qualifications</div>${quals.length?'<div style="display:flex;flex-direction:column;gap:6px;">'+quals.map(q=>{const match=matchesProfile(q);return `<div style="font-size:13px;padding:6px 10px;border-radius:var(--radius-sm);background:${match?'var(--green-bg)':'var(--red-bg)'};color:${match?'var(--green)':'var(--red)'};">${esc(q)}</div>`;}).join('')+'</div>':'<div style="font-size:12px;color:var(--text3);">'+(a?'None extracted.':'Analyzing…')+'</div>'}`;
   const kws=a&&!a._error?(a.keywords||[]):[];
   document.getElementById('d-keywords-card').innerHTML=`<div class="card-title">Keywords &amp; skills</div>${kws.length?'<div style="display:flex;flex-wrap:wrap;gap:6px;">'+kws.map(k=>{const inP=PROFILE.skills.some(s=>s.includes(k)||k.includes(s)||s.split(' ').some(w=>w.length>3&&k.includes(w)));return `<span class="pill ${inP?'pill-teal':''}">${esc(k)}</span>`;}).join('')+'</div><div style="font-size:11px;color:var(--text3);margin-top:8px;">Green = in your profile</div>':'<div style="font-size:12px;color:var(--text3);">'+(a?'None extracted.':'Analyzing…')+'</div>'}`;
-  const caps=a&&!a._error?(a.capability_signals||[]):[];
-  const inds=a&&!a._error?(a.industry_signals||[]):[];
-  const gapFlags=a&&!a._error?(a.gap_flags||[]):[];
-  const plSignal=a&&!a._error?a.requires_pl:'';
-  const teamSignal=a&&!a._error?a.requires_large_team:'';
-  let capHTML=`<div class="card-title">Your capabilities signaled</div>`;
-  capHTML+=caps.length?'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">'+caps.map(c=>`<span class="pill pill-teal">${esc(c)}</span>`).join('')+'</div>':'<div style="font-size:12px;color:var(--text3);margin-bottom:12px;">'+(a?'None detected.':'Analyzing…')+'</div>';
-  if(inds.length) capHTML+=`<div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em;">Industries</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">${inds.map(i=>`<span class="pill">${esc(i)}</span>`).join('')}</div>`;
-  if(plSignal==='Yes'||teamSignal==='Yes'){capHTML+=`<div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em;">Watch signals</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">`;if(plSignal==='Yes')capHTML+=`<span class="pill" style="background:var(--amber-bg);color:var(--amber);">P&amp;L ownership likely required</span>`;if(teamSignal==='Yes')capHTML+=`<span class="pill" style="background:var(--amber-bg);color:var(--amber);">Large team ownership likely required</span>`;capHTML+=`</div>`;}
-  if(gapFlags.length) capHTML+=`<div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em;">Honest gap flags</div><div style="display:flex;flex-direction:column;gap:5px;">${gapFlags.map(g=>`<div style="font-size:12px;color:var(--red);background:var(--red-bg);padding:5px 10px;border-radius:var(--radius-sm);">${esc(g)}</div>`).join('')}</div>`;
-  document.getElementById('d-capabilities-card').innerHTML=capHTML;
+  // capabilities removed
   document.getElementById('d-rationale').value=p.fitRationale||'';
   document.getElementById('d-notes').value=p.notes||'';
   document.getElementById('rationale-saved').textContent='';
