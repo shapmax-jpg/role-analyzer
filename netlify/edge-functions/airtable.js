@@ -9,7 +9,7 @@ const cors = {
   'Content-Type': 'application/json'
 };
 
-export default async (request, context) => {
+export default async (request) => {
   if (request.method === 'OPTIONS') {
     return new Response('', { status: 200, headers: cors });
   }
@@ -19,9 +19,9 @@ export default async (request, context) => {
 
   try {
     if (path === '/api/anthropic') {
-      const ANTHROPIC_KEY = context.env.ANTHROPIC_KEY || Deno.env.get('ANTHROPIC_KEY');
+      const ANTHROPIC_KEY = Deno.env.get('ANTHROPIC_KEY');
       if (!ANTHROPIC_KEY) {
-        return new Response(JSON.stringify({ error: 'Missing ANTHROPIC_KEY', env_keys: Object.keys(context.env || {}) }), { status: 500, headers: cors });
+        return new Response(JSON.stringify({ error: 'ANTHROPIC_KEY not found in env' }), { status: 500, headers: cors });
       }
       const body = await request.text();
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -62,7 +62,7 @@ export default async (request, context) => {
     return new Response(text, { status: resp.status, headers: cors });
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: cors });
+    return new Response(JSON.stringify({ error: err.message, stack: err.stack }), { status: 500, headers: cors });
   }
 };
 
