@@ -19,9 +19,9 @@ export default async (request, context) => {
 
   try {
     if (path === '/api/anthropic') {
-      const ANTHROPIC_KEY = Deno.env.get('ANTHROPIC_KEY');
+      const ANTHROPIC_KEY = context.env.ANTHROPIC_KEY || Deno.env.get('ANTHROPIC_KEY');
       if (!ANTHROPIC_KEY) {
-        return new Response(JSON.stringify({ error: 'Missing ANTHROPIC_KEY' }), { status: 500, headers: cors });
+        return new Response(JSON.stringify({ error: 'Missing ANTHROPIC_KEY', env_keys: Object.keys(context.env || {}) }), { status: 500, headers: cors });
       }
       const body = await request.text();
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
