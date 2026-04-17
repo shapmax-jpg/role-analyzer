@@ -1,59 +1,59 @@
-const AT_TOKEN = 'patUo6zexrT7rFvCd.1ef9cef613ea30420edaa649b704daa0ef7e26410fc4718f5876624414a046f7';
+const AT_TOKEN = 'patUo6zexrT7rFvCd.b6093d871361c8a89f3c79550837be684e946ed6284fc5e65d8afcf4dfcb1302';
 const AT_BASE = 'app87BWTrgyjIQncU';
 const BASE_URL = `https://api.airtable.com/v0/${AT_BASE}`;
 
-exports.handler = async (event) => {
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-    'Content-Type': 'application/json'
-  };
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+  'Content-Type': 'application/json'
+};
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+export default async (request) => {
+  if (request.method === 'OPTIONS') {
+    return new Response('', { status: 200, headers: cors });
   }
 
   try {
-    const params = event.queryStringParameters || {};
-    const table = params.table || 'Postings';
-    const recordId = params.id || '';
-    const method = event.httpMethod;
+    const url = new URL(request.url);
+    const table = url.searchParams.get('table') || 'Postings';
+    const recordId = url.searchParams.get('id') || '';
 
-    let url = `${BASE_URL}/${table}`;
-    if (recordId) url += `/${recordId}`;
+    let atUrl = `${BASE_URL}/${table}`;
+    if (recordId) atUrl += `/${recordId}`;
 
-    // Forward query params (pageSize, offset, etc)
-    const fwdParams = Object.entries(params)
-      .filter(([k]) => !['table','id'].includes(k))
-      .map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
-    if (fwdParams) url += `?${fwdParams}`;
+    const fwdParams = new URLSearchParams();
+    for (const [k, v] of url.searchParams) {
+      if (!['table', 'id'].includes(k)) fwdParams.append(k, v);
+    }
+    const qs = fwdParams.toString();
+    if (qs) atUrl += `?${qs}`;
 
-    const fetchOpts = {
-      method,
+    const opts = {
+      method: request.method,
       headers: {
         'Authorization': `Bearer ${AT_TOKEN}`,
         'Content-Type': 'application/json'
       }
     };
 
-    if (['POST','PATCH','PUT'].includes(method) && event.body) {
-      fetchOpts.body = event.body;
+    if (['POST', 'PATCH', 'PUT'].includes(request.method)) {
+      opts.body = await request.text();
     }
 
-    const resp = await fetch(url, fetchOpts);
+    const resp = await fetch(atUrl, opts);
     const data = await resp.json();
 
-    return {
-      statusCode: resp.status,
-      headers,
-      body: JSON.stringify(data)
-    };
+    return new Response(JSON.stringify(data), {
+      status: resp.status,
+      headers: cors
+    });
   } catch (err) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: err.message })
-    };
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: cors
+    });
   }
 };
+
+export const config = { path: '/api/airtable' };
