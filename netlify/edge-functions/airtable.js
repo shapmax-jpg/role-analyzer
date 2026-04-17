@@ -42,9 +42,9 @@ export default async (request) => {
     }
 
     const resp = await fetch(atUrl, opts);
-    const data = await resp.json();
+    const text = await resp.text();
 
-    return new Response(JSON.stringify(data), {
+    return new Response(text, {
       status: resp.status,
       headers: cors
     });
