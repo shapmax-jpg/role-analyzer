@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Role Opportunity Analyzer</title>
+<style>
+  :root {
+    --bg: #FAFAF8; --surface: #FFFFFF; --surface2: #F4F3F0;
+    --border: rgba(0,0,0,0.10); --border-med: rgba(0,0,0,0.18);
+    --text: #1A1A18; --text2: #6B6A65; --text3: #9B9A96;
+    --blue: #185FA5; --blue-bg: #E6F1FB;
+    --teal: #0F6E56; --teal-bg: #E1F5EE;
+    --amber: #854F0B; --amber-bg: #FAEEDA;
+    --coral: #993C1D; --coral-bg: #FAECE7;
+    --purple: #533AB7; --purple-bg: #EEEDFE;
+    --red: #A32D2D; --red-bg: #FCEBEB;
+    --green: #3B6D11; --green-bg: #EAF3DE;
+    --gray: #5F5E5A; --gray-bg: #F1EFE8;
+    --radius: 10px; --radius-sm: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+  .shell { display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; flex-shrink: 0; background: var(--surface); border-right: 0.5px solid var(--border); padding: 1.5rem 0; position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto; z-index: 10; }
+  .main { margin-left: 220px; padding: 2rem; max-width: 1100px; }
+  .detail-main { margin-left: 220px; padding: 2rem; max-width: 900px; display: none; }
+  .wordmark { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); padding: 0 1.25rem 1.25rem; border-bottom: 0.5px solid var(--border); margin-bottom: 1rem; }
+  .nav-section { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); padding: 0.75rem 1.25rem 0.4rem; }
+  .nav-item { display: block; padding: 0.5rem 1.25rem; font-size: 13px; color: var(--text2); cursor: pointer; border: none; background: none; width: 100%; text-align: left; border-left: 2px solid transparent; }
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+  .nav-item.active { color: var(--text); font-weight: 500; border-left-color: var(--text); background: var(--surface2); }
+  .nav-count { float: right; background: var(--surface2); color: var(--text3); font-size: 11px; padding: 1px 6px; border-radius: 10px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .page-title { font-size: 20px; font-weight: 500; margin-bottom: 0.25rem; }
+  .page-sub { font-size: 13px; color: var(--text2); margin-bottom: 1.75rem; }
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 13px; font-weight: 500; margin-bottom: 0.75rem; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+  @media (max-width: 800px) { .grid-2, .grid-4 { grid-template-columns: 1fr 1fr; } .grid-3 { grid-template-columns: 1fr 1fr; } }
+  .metric { background: var(--surface2); border-radius: var(--radius-sm); padding: 1rem; }
+  .metric-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .metric-val { font-size: 24px; font-weight: 500; }
+  .metric-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 5px; margin-top: 12px; }
+  label:first-child { margin-top: 0; }
+  input[type=text], textarea, select { width: 100%; padding: 8px 12px; border: 0.5px solid var(--border-med); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; background: var(--surface2); color: var(--text); outline: none; }
+  input[type=text]:focus, textarea:focus, select:focus { border-color: var(--blue); background: var(--surface); }
+  textarea { resize: vertical; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .btn { padding: 8px 18px; border-radius: var(--radius-sm); border: 0.5px solid var(--border-med); background: none; font-size: 13px; cursor: pointer; color: var(--text); font-family: inherit; }
+  .btn:hover { background: var(--surface2); }
+  .btn-primary { background: var(--text); color: var(--surface); border-color: var(--text); }
+  .btn-primary:hover { opacity: 0.82; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+  .btn-danger { color: var(--red); border-color: var(--red); }
+  .btn-danger:hover { background: var(--red-bg); }
+  .badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 2px 9px; border-radius: 20px; white-space: nowrap; }
+  .badge-blue { background: var(--blue-bg); color: var(--blue); }
+  .badge-teal { background: var(--teal-bg); color: var(--teal); }
+  .badge-amber { background: var(--amber-bg); color: var(--amber); }
+  .badge-coral { background: var(--coral-bg); color: var(--coral); }
+  .badge-purple { background: var(--purple-bg); color: var(--purple); }
+  .badge-red { background: var(--red-bg); color: var(--red); }
+  .badge-green { background: var(--green-bg); color: var(--green); }
+  .badge-gray { background: var(--gray-bg); color: var(--gray); }
+  .fit-high { background: var(--green-bg); color: var(--green); }
+  .fit-medium { background: var(--amber-bg); color: var(--amber); }
+  .fit-low { background: var(--gray-bg); color: var(--gray); }
+  .fit-unset { background: var(--surface2); color: var(--text3); }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .bar-label { font-size: 12px; color: var(--text2); width: 160px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-track { flex: 1; height: 7px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; }
+  .bar-count { font-size: 12px; color: var(--text3); min-width: 20px; text-align: right; }
+  .posting-item { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 0.75rem; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+  .posting-item:hover { border-color: var(--border-med); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .posting-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+  .posting-meta { font-size: 12px; color: var(--text2); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .dot-pending { background: var(--text3); }
+  .dot-done { background: var(--teal); }
+  .dot-error { background: var(--red); }
+  .dot-saving { background: var(--amber); }
+  .tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; }
+  .kw-tag { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+  .gap-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+  .gap-skill { font-size: 13px; flex: 1; }
+  .gap-result { font-size: 11px; min-width: 52px; text-align: right; }
+  .cap-row { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; }
+  .cap-row:last-child { border-bottom: none; }
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .compare-table th { text-align: left; font-weight: 500; font-size: 12px; padding: 8px 10px; border-bottom: 0.5px solid var(--border-med); color: var(--text2); }
+  .compare-table td { padding: 8px 10px; border-bottom: 0.5px solid var(--border); vertical-align: top; }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table .attr-col { color: var(--text2); font-size: 12px; width: 110px; }
+  #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--text); color: var(--surface); font-size: 13px; padding: 10px 18px; border-radius: var(--radius-sm); opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 1000; }
+  #toast.show { opacity: 1; }
+  .fit-editor { display: flex; gap: 6px; }
+  .fit-opt { padding: 4px 10px; font-size: 11px; border-radius: 20px; border: 0.5px solid var(--border-med); cursor: pointer; background: none; font-family: inherit; color: var(--text2); }
+  .fit-opt:hover { background: var(--surface2); }
+  .fit-opt.selected-high { background: var(--green-bg); color: var(--green); border-color: var(--green); font-weight: 500; }
+  .fit-opt.selected-medium { background: var(--amber-bg); color: var(--amber); border-color: var(--amber); font-weight: 500; }
+  .fit-opt.selected-low { background: var(--gray-bg); color: var(--gray); border-color: var(--gray); font-weight: 500; }
+  .empty { text-align: center; padding: 3.5rem 1rem; color: var(--text3); font-size: 14px; }
+  .empty-icon { font-size: 28px; margin-bottom: 0.75rem; }
+  .empty-sub { font-size: 12px; margin-top: 0.4rem; }
+  hr { border: none; border-top: 0.5px solid var(--border); margin: 1.25rem 0; }
+  .sync-bar { font-size: 11px; color: var(--text3); padding: 6px 1.25rem; border-bottom: 0.5px solid var(--border); margin-bottom: 0; display: flex; align-items: center; gap: 8px; }
+  .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); display: inline-block; }
+  .sync-dot.syncing { background: var(--amber); animation: pulse 1s infinite; }
+  .sync-dot.error { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-med); border-radius: 3px; }
+  .detail-back { background: none; border: 0.5px solid var(--border-med); border-radius: var(--radius-sm); padding: 6px 14px; font-size: 13px; cursor: pointer; color: var(--text2); font-family: inherit; flex-shrink: 0; }
+  .detail-back:hover { background: var(--surface2); color: var(--text); }
+  .detail-title { font-size: 22px; font-weight: 500; line-height: 1.2; }
+  .detail-company { font-size: 15px; color: var(--text2); margin-top: 3px; }
+  .detail-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .pill { background: var(--surface2); border-radius: 20px; padding: 4px 12px; font-size: 12px; color: var(--text2); }
+  .pill-teal { background: var(--teal-bg); color: var(--teal); }
+  .notes-area { width: 100%; padding: 10px 12px; border: 0.5px solid var(--border-med); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; background: var(--surface2); color: var(--text); resize: vertical; min-height: 80px; }
+  .notes-area:focus { outline: none; border-color: var(--blue); background: var(--surface); }
+  .save-indicator { font-size: 11px; color: var(--text3); margin-left: 8px; }
+</style>
+</head>
+<body>
+<div id="toast"></div>
+
+<div class="shell">
+  <nav class="sidebar">
+    <div class="wordmark">Role Analyzer</div>
+    <div class="sync-bar"><span class="sync-dot" id="sync-dot"></span><span id="sync-label">Connected</span></div>
+    <div class="nav-section">Add &amp; track</div>
+    <button class="nav-item active" id="nav-postings" onclick="nav('postings',this)">Postings <span class="nav-count" id="count-badge">0</span></button>
+    <div class="nav-section">Analysis</div>
+    <button class="nav-item" id="nav-patterns" onclick="nav('patterns',this)">Patterns</button>
+    <button class="nav-item" id="nav-compare" onclick="nav('compare',this)">Compare</button>
+    <button class="nav-item" id="nav-keywords" onclick="nav('keywords',this)">Keywords</button>
+    <button class="nav-item" id="nav-gap" onclick="nav('gap',this)">Gap analysis</button>
+    <div class="nav-section">Profile</div>
+    <button class="nav-item" id="nav-profile" onclick="nav('profile',this)">My profile</button>
+  </nav>
+
+  <main class="main" id="main-panels">
+    <div id="panel-postings" class="panel active">
+      <div class="page-title">Job postings</div>
+      <div class="page-sub">Add postings below. Each is analyzed automatically and saved to Airtable.</div>
+      <div class="card">
+        <div class="card-title">Add a posting</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">Paste the full job description — title, company, and all other fields are extracted automatically.</div>
+        <textarea id="in-text" rows="8" placeholder="Paste the full job description here…"></textarea>
+        <div style="margin-top:8px;">
+          <label style="display:inline;margin:0;font-size:12px;color:var(--text2);">Source (optional)</label>
+          <input type="text" id="in-source" placeholder="LinkedIn, referral, company website…" style="margin-top:6px;" />
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:12px;">
+          <button class="btn btn-primary" id="add-btn" onclick="addPosting()">Add posting</button>
+          <span id="add-status" style="font-size:12px;color:var(--text3);"></span>
+          <span style="font-size:12px;color:var(--text3);">or</span>
+          <label style="margin:0;cursor:pointer;padding:7px 14px;border:0.5px solid var(--border-med);border-radius:var(--radius-sm);font-size:13px;color:var(--text2);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='none'">
+            Upload .txt / .csv
+            <input type="file" accept=".txt,.csv" style="display:none" onchange="handleFile(event)" />
+          </label>
+        </div>
+      </div>
+      <div id="postings-list"></div>
+    </div>
+
+    <div id="panel-patterns" class="panel"><div class="page-title">Patterns</div><div class="page-sub">Signals across all analyzed postings.</div><div id="patterns-content"><div class="empty"><div class="empty-icon">📊</div>Add postings to see patterns.</div></div></div>
+    <div id="panel-compare" class="panel"><div class="page-title">Compare</div><div class="page-sub">Side-by-side view of up to 5 roles.</div><div id="compare-content"><div class="empty"><div class="empty-icon">⚖️</div>Add at least two postings to compare.</div></div></div>
+    <div id="panel-keywords" class="panel"><div class="page-title">Keywords</div><div class="page-sub">Skill and term frequency across all postings.</div><div id="keywords-content"><div class="empty"><div class="empty-icon">🔑</div>Add postings to see keyword frequency.</div></div></div>
+    <div id="panel-gap" class="panel"><div class="page-title">Gap analysis</div><div class="page-sub">What the market is asking for vs. your profile.</div><div id="gap-content"><div class="empty"><div class="empty-icon">🎯</div>Add postings to run gap analysis.</div></div></div>
+    <div id="panel-profile" class="panel">
+      <div class="page-title">My profile</div><div class="page-sub">The baseline used for gap analysis.</div>
+      <div class="card"><div class="card-title">Identity</div><div style="font-size:13px;color:var(--text2);line-height:1.8;"><strong style="color:var(--text);">Max Shapiro</strong> — Director, Customer Experience &amp; AI Strategy<br>13 years at Publicis Sapient · Chicago, IL · Master of Design, IIT</div></div>
+      <div class="card"><div class="card-title">Skills on file <span style="font-weight:400;color:var(--text3);">(38)</span></div><div class="tag-cloud" id="profile-skills"></div></div>
+      <div class="card"><div class="card-title">11 capabilities</div><div id="profile-caps"></div></div>
+    </div>
+  </main>
+
+  <main class="detail-main" id="detail-panel">
+    <div style="display:flex;align-items:flex-start;gap:1rem;margin-bottom:1.75rem;">
+      <button class="detail-back" onclick="closeDetail()">← Back</button>
+      <div style="flex:1;">
+        <div class="detail-title" id="d-title"></div>
+        <div class="detail-company" id="d-company"></div>
+        <div class="detail-badges" id="d-badges"></div>
+      </div>
+      <div style="flex-shrink:0;">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">Fit score</div>
+        <div class="fit-editor" id="d-fit-editor"></div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:1rem;">
+      <div class="card" id="d-responsibilities"></div>
+      <div class="card" id="d-qualifications"></div>
+    </div>
+    <div class="grid-2" style="margin-bottom:1rem;">
+      <div class="card" id="d-keywords-card"></div>
+      <div class="card" id="d-capabilities-card"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="card-title">Fit rationale <span class="save-indicator" id="rationale-saved"></span></div>
+      <textarea class="notes-area" id="d-rationale" placeholder="Why does this role fit (or not)? What's the opportunity, the risk, the angle?" onblur="saveDetail()"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-title">Notes <span class="save-indicator" id="notes-saved"></span></div>
+      <textarea class="notes-area" id="d-notes" placeholder="Contacts, conversations, next steps, questions to answer…" onblur="saveDetail()"></textarea>
+    </div>
+    <div style="margin-top:1.5rem;padding-top:1rem;border-top:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <button class="btn btn-danger btn-sm" id="d-remove-btn">Remove posting</button>
+      <button class="detail-back" onclick="closeDetail()">← Back to postings</button>
+    </div>
+  </main>
+</div>
+
+<script>
+const ANTHROPIC_KEY = 'ANTHROPIC_KEY_PLACEHOLDER';
+const AT_TOKEN = 'AT_TOKEN_PLACEHOLDER';
+const AT_BASE = 'AT_BASE_PLACEHOLDER';
+const AT_TABLE = 'Postings';
+const AT_URL = '/.netlify/functions/airtable';
+
+const PROFILE = {
+  title: 'Director, Customer Experience & AI Strategy',
+  seniority: 'Director',
+  yearsExperience: 17,
+  background: 'Started in sound design and commercial photography; earned Master of Design at IIT Institute of Design; 13 years at Publicis Sapient rising to Director. Strong humanistic foundation combined with commercial instinct.',
+
+  // Core skills and domain knowledge
+  skills: [
+    'cx strategy','customer experience strategy','ai strategy','ai-enabled cx',
+    'agentic ai','generative ai','ai prototyping','system prompts','agent frameworks',
+    'journey mapping','service design','service blueprinting','experience-led transformation',
+    'customer research','mixed-method research','qualitative research','survey design',
+    'voice of customer','human-centered design','persona development',
+    'product strategy','roadmap development','feature backlog','opportunity framing',
+    'value proposition development','business case development',
+    'cross-functional leadership','stakeholder alignment','executive facilitation',
+    'cx capability building','competency frameworks','practice leadership',
+    'digital transformation','b2b2c','channel strategy','omnichannel orchestration',
+    'healthcare','financial services','ecommerce','agriculture','automotive',
+    'figma','miro','mural','claude api','jobs to be done','organizational design',
+    'master of design','innovation strategy','competitive analysis'
+  ],
+
+  // The 11 core capabilities (from messaging document)
+  capabilities: [
+    'Surface the right customer problems and build strategies around them',
+    'Close the gap between strategy and delivery',
+    'Use AI to modernize CX — how teams work and experiences delivered',
+    'Design for the whole system of relationships — businesses, partners, customers',
+    'Get teams and organizations moving together around shared customer understanding',
+    'Shape the portfolio — where to innovate and what to build',
+    'Turn strategy into operating reality at scale',
+    'Grow teams that do their best work in challenging and ambiguous conditions',
+    'Build CX as a practice cohesive with product, engineering, and business',
+    'Keep complex cross-functional work focused and moving',
+    "Stay anchored to the client's real problem even under pressure"
+  ],
+
+  // Key differentiators — what makes Max distinct
+  differentiators: [
+    'Commercial instinct — connects experience decisions to business drivers (acquire, grow, retain) without being prompted',
+    'Research-anchored strategy — qualitative depth with quantitative direction; knows what each method can and cannot do',
+    'Opportunity framing — the core move is finding where customer understanding and business strategy meet and making that productive',
+    'Holds the customer as organizing principle in rooms full of silos — enables alignment indirectly',
+    'B2B2C systems thinking — understands the full chain from enterprise to agent/partner to end customer',
+    'AI as workflow and capability accelerator, not just a product feature — thesis: the problems are still the same',
+    'Cross-craft fluency — strategy, research, design, content, product — understands the continuum without high walls between crafts'
+  ],
+
+  // Real gaps — to be used to flag potential mismatches in postings
+  gaps: [
+    'No formal P&L ownership — has project-level scoping, staffing, and burn management experience but has not held a budget line or headcount formally',
+    'Has not formally owned a large team — has managed careers and gotten people promoted, but not at VP-level org scale',
+    'Quantitative research depth — directs quant, has worked alongside quant researchers, but does not run statistical analysis independently',
+    'Some enterprise transformation language outpaces formal evidence — can speak to operating model design and AI governance but evidence base is thinner in places'
+  ],
+
+  // Project proof points by type
+  proofPoints: {
+    enterpriseRoadmap: 'BPHC — 3-year enterprise roadmap across $14.6B grant operation, 500+ stakeholders, AI governance pilot',
+    commercialCase: 'Polaris — identified $140M market opportunity, built business case with $14M NPV, led to 2021 product launch',
+    channelEcosystem: 'Ford — service reservation initiative within $1B transformation, multi-party dependency problem (OEM, dealers, platform)',
+    globalResearch: 'Corteva — global research across 6 countries, 80+ participants, post-merger go-to-market strategy',
+    scaleProgram: 'Humana — end-to-end research for Medicare eCommerce redesign, 3-4M members, 172 prioritized requirements',
+    practiceBuilding: 'Sapient Experience Practice — authored competency framework across 4 crafts, 10 career stages, hundreds of practitioners'
+  }
+};
+
+let postings = [];
+let currentDetailId = null;
+
+// ── SYNC STATUS ───────────────────────────────────────────────────────────────
+function setSyncStatus(state, label) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  dot.className = 'sync-dot' + (state === 'syncing' ? ' syncing' : state === 'error' ? ' error' : '');
+  lbl.textContent = label;
+}
+
+// ── AIRTABLE ──────────────────────────────────────────────────────────────────
+const atHeaders = { 'Content-Type': 'application/json' };
+
+async function atLoadAll() {
+  setSyncStatus('syncing', 'Loading…');
+  try {
+    let all = [], offset = null;
+    do {
+      const url = AT_URL + '?table=Postings&pageSize=100' + (offset ? '&offset=' + encodeURIComponent(offset) : '');
+      const r = await fetch(url, { headers: atHeaders });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error.message);
+      all = all.concat(d.records || []);
+      offset = d.offset;
+    } while (offset);
+
+    postings = all.map(rec => ({
+      id: rec.id,
+      title: rec.fields.Title || '',
+      company: rec.fields.Company || '',
+      orgSize: rec.fields.OrgSize || '',
+      comp: rec.fields.Comp || '',
+      source: rec.fields.Source || '',
+      fit: rec.fields.Fit || null,
+      fitRationale: rec.fields.FitRationale || '',
+      notes: rec.fields.Notes || '',
+      text: rec.fields.PostingText || '',
+      added: rec.fields.Added || '',
+      analysis: rec.fields.Analysis ? JSON.parse(rec.fields.Analysis) : null
+    }));
+    document.getElementById('count-badge').textContent = postings.length;
+    setSyncStatus('ok', 'Synced');
+    renderPostingsList();
+  } catch(e) {
+    setSyncStatus('error', 'Sync error');
+    console.error(e);
+  }
+}
+
+async function atCreate(posting) {
+  const r = await fetch(AT_URL + '?table=Postings', {
+    method: 'POST', headers: atHeaders,
+    body: JSON.stringify({ fields: postingToFields(posting) })
+  });
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message);
+  return d.id;
+}
+
+async function atUpdate(id, fields) {
+  const r = await fetch(`${AT_URL}?table=Postings&id=${id}`, {
+    method: 'PATCH', headers: atHeaders,
+    body: JSON.stringify({ fields })
+  });
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message);
+}
+
+async function atDelete(id) {
+  await fetch(`${AT_URL}?table=Postings&id=${id}`, { method: 'DELETE', headers: atHeaders });
+}
+
+function postingToFields(p) {
+  return {
+    Title: p.title,
+    Company: p.company,
+    OrgSize: p.orgSize,
+    Comp: p.comp,
+    Source: p.source,
+    Fit: p.fit || '',
+    FitRationale: p.fitRationale || '',
+    Notes: p.notes || '',
+    PostingText: p.text,
+    Added: p.added,
+    Analysis: p.analysis ? JSON.stringify(p.analysis) : ''
+  };
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function toast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function badgeHTML(val) {
+  if(!val) return '<span style="color:var(--text3);font-size:12px;">—</span>';
+  const map={'High':'badge-teal','Medium':'badge-amber','Low':'badge-gray','None':'badge-gray','C-suite':'badge-coral','VP':'badge-blue','Director':'badge-blue','Senior Manager':'badge-purple','Manager':'badge-gray','Individual Contributor':'badge-gray','CX':'badge-teal','AI/ML':'badge-blue','Strategy':'badge-coral','Product':'badge-amber','Consulting':'badge-gray','Operations':'badge-gray','Other':'badge-gray','Enterprise':'badge-blue','Mid-market':'badge-purple','SMB':'badge-gray','New role':'badge-teal','Backfill':'badge-amber','Transformation':'badge-coral','Unclear':'badge-gray'};
+  return `<span class="badge ${map[val]||'badge-gray'}">${esc(val)}</span>`;
+}
+function fitBadge(fit) { return fit?`<span class="badge fit-${fit.toLowerCase()}">${fit}</span>`:'<span class="badge fit-unset">Not set</span>'; }
+function barRow(label,val,max,color) { return `<div class="bar-row"><div class="bar-label" title="${esc(label)}">${esc(label)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(val/max*100)}%;background:${color};"></div></div><div class="bar-count">${val}</div></div>`; }
+function countMap(items) { const m={}; items.forEach(v=>{if(v)m[v]=(m[v]||0)+1;}); return m; }
+function topN(arr,n) { const m={}; arr.forEach(s=>{const k=(s||'').toLowerCase().trim();if(k)m[k]=(m[k]||0)+1;}); return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,n); }
+function getAnalyzed() { return postings.filter(p=>p.analysis&&!p.analysis._error); }
+
+// ── NAV ───────────────────────────────────────────────────────────────────────
+function nav(name, el) {
+  closeDetail();
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-'+name).classList.add('active');
+  if(name==='patterns') renderPatterns();
+  if(name==='compare') renderCompare();
+  if(name==='keywords') renderKeywords();
+  if(name==='gap') renderGap();
+  if(name==='profile') renderProfile();
+}
+
+// ── ADD POSTING ───────────────────────────────────────────────────────────────
+async function addPosting() {
+  const text=document.getElementById('in-text').value.trim();
+  if(!text){toast('Please paste a job description first.');return;}
+
+  const btn=document.getElementById('add-btn');
+  const status=document.getElementById('add-status');
+  btn.disabled=true; btn.textContent='Extracting…'; status.textContent='Reading the posting…';
+
+  // Step 1: Quick extraction of structured fields
+  let extracted = { title:'Untitled Role', company:'', orgSize:'', comp:'' };
+  try {
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,messages:[{role:'user',content:`Extract these fields from the job posting below. Return ONLY a JSON object, no markdown.\n\n{"title":"exact job title","company":"company name or empty string","orgSize":"Enterprise|Mid-market|SMB|unknown — infer from company signals","comp":"High|Medium|Low|unknown — infer from salary range if present, seniority, and company type"}\n\nPosting:\n${text.substring(0,2000)}`}]})});
+    const data=await resp.json();
+    extracted={...extracted,...JSON.parse((data.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim())};
+  } catch(e) { /* fall through with defaults */ }
+
+  status.textContent='Saving…';
+
+  const posting = {
+    id: null,
+    title: extracted.title,
+    company: extracted.company,
+    orgSize: extracted.orgSize==='unknown'?'':extracted.orgSize,
+    comp: extracted.comp==='unknown'?'':extracted.comp,
+    source: document.getElementById('in-source').value.trim(),
+    text, fit: null, fitRationale: '', notes: '', analysis: null,
+    added: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+  };
+
+  setSyncStatus('syncing','Saving…');
+  try {
+    const atId=await atCreate(posting);
+    posting.id=atId;
+    postings.unshift(posting);
+    document.getElementById('count-badge').textContent=postings.length;
+    setSyncStatus('ok','Synced');
+    document.getElementById('in-text').value='';
+    document.getElementById('in-source').value='';
+    btn.disabled=false; btn.textContent='Add posting'; status.textContent='';
+    toast(`"${posting.title}" added — analyzing…`);
+    renderPostingsList();
+    analyzePosting(posting.id);
+  } catch(e) {
+    setSyncStatus('error','Save failed');
+    btn.disabled=false; btn.textContent='Add posting'; status.textContent='';
+    toast('Failed to save to Airtable. Check connection.');
+  }
+}
+
+function handleFile(evt) {
+  const file=evt.target.files[0]; if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{document.getElementById('in-text').value=e.target.result.substring(0,10000);toast('File loaded — click "Add posting" to extract and save.');};
+  r.readAsText(file); evt.target.value='';
+}
+
+async function setFit(id, val, e) {
+  if(e) e.stopPropagation();
+  const p=postings.find(x=>x.id===id); if(!p)return;
+  p.fit=val;
+  renderPostingsList();
+  try { await atUpdate(id,{Fit:val||''}); } catch(err) { toast('Failed to save fit score.'); }
+}
+
+// ── POSTING LIST ──────────────────────────────────────────────────────────────
+function renderPostingsList() {
+  const el=document.getElementById('postings-list');
+  if(!postings.length){el.innerHTML='<div class="empty"><div class="empty-icon">📋</div>No postings yet.<div class="empty-sub">Add your first role above.</div></div>';return;}
+  el.innerHTML=postings.map(p=>{
+    const a=p.analysis;
+    const dot=!a?'dot-pending':a._error?'dot-error':'dot-done';
+    const statusLabel=!a?'Analyzing…':a._error?'Analysis failed':'Analyzed';
+    return `<div class="posting-item" onclick="openDetail('${p.id}')">
+      <div style="display:flex;align-items:flex-start;gap:1rem;">
+        <div style="flex:1;min-width:0;">
+          <div class="posting-title">${esc(p.title)}${p.company?` <span style="font-weight:400;color:var(--text2);">· ${esc(p.company)}</span>`:''}</div>
+          <div class="posting-meta">
+            <span><span class="status-dot ${dot}"></span> ${statusLabel}</span>
+            ${p.added?`<span>${p.added}</span>`:''}
+            ${p.orgSize?badgeHTML(p.orgSize):''}
+            ${p.comp?`<span class="badge badge-amber">${esc(p.comp)} comp</span>`:''}
+            ${p.source?`<span style="color:var(--text3);">${esc(p.source)}</span>`:''}
+            ${a&&!a._error?badgeHTML(a.seniority):''}
+            ${a&&!a._error?`<span style="font-size:12px;color:var(--text3);">${esc(a.summary||'')}</span>`:''}
+          </div>
+          <div style="margin-top:8px;display:flex;align-items:center;gap:8px;" onclick="event.stopPropagation()">
+            <span style="font-size:11px;color:var(--text3);">Fit:</span>
+            <div class="fit-editor">
+              ${['High','Medium','Low'].map(v=>`<button class="fit-opt ${p.fit===v?'selected-'+v.toLowerCase():''}" onclick="setFit('${p.id}','${v}',event)">${v}</button>`).join('')}
+              ${p.fit?`<button class="fit-opt" onclick="setFit('${p.id}',null,event)" style="font-size:10px;color:var(--text3);">✕</button>`:''}
+            </div>
+            ${p.fitRationale?'<span style="font-size:11px;color:var(--text3);">· has rationale</span>':''}
+            ${p.notes?'<span style="font-size:11px;color:var(--text3);">· has notes</span>':''}
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--text3);flex-shrink:0;padding-top:2px;">View →</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── AI ANALYSIS ───────────────────────────────────────────────────────────────
+async function analyzePosting(id) {
+  const p=postings.find(x=>x.id===id); if(!p)return;
+  try {
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:`Analyze this job posting against this candidate profile. Return ONLY a JSON object, no markdown, no preamble.\n\nCANDIDATE: Director-level CX and AI strategist, 17 years experience. Strong in: opportunity framing, research-anchored strategy, B2B2C systems, AI operationalization, cross-functional alignment, commercial instinct. Known gaps: no formal P&L ownership, no large team ownership, directs quant research but doesn't run it independently.\n\nReturn:\n{"seniority":"C-suite|VP|Director|Senior Manager|Manager|Individual Contributor","function":"CX|AI/ML|Strategy|Product|Consulting|Operations|Other","ai_focus":"High|Medium|Low|None","org_signal":"New role|Backfill|Transformation|Unclear","requires_pl":"Yes|No|Unclear","requires_large_team":"Yes|No|Unclear","responsibilities":["4-6 short phrases"],"qualifications":["4-6 short phrases"],"keywords":["10-14 single skills lowercase"],"capability_signals":["2-4 phrases matching candidate capabilities: surfacing customer problems, strategy-to-delivery gap, AI to modernize CX, whole system design, alignment and mobilization, portfolio shaping, operating model design, team growth, practice building, cross-functional focus, staying anchored to real problems"],"gap_flags":["0-3 things this role requires that the candidate genuinely lacks — be specific and honest, not generic"],"industry_signals":["1-3 industries"],"summary":"One sentence max 18 words."}\n\nTitle: ${p.title}\nCompany: ${p.company||'not specified'}\nText:\n${p.text.substring(0,3500)}`}]})});
+    const data=await resp.json();
+    p.analysis=JSON.parse((data.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim());
+    renderPostingsList();
+    if(currentDetailId===id) openDetail(id);
+    await atUpdate(id,{Analysis:JSON.stringify(p.analysis)});
+  } catch(e) {
+    p.analysis={_error:true};
+    renderPostingsList();
+  }
+}
+
+// ── DETAIL VIEW ───────────────────────────────────────────────────────────────
+function openDetail(id) {
+  const p=postings.find(x=>x.id===id); if(!p)return;
+  currentDetailId=id;
+  const a=p.analysis;
+  document.getElementById('main-panels').style.display='none';
+  document.getElementById('detail-panel').style.display='block';
+  document.getElementById('d-title').textContent=p.title;
+  document.getElementById('d-company').textContent=p.company||'';
+  const badges=[];
+  if(a&&!a._error){badges.push(badgeHTML(a.seniority));badges.push(badgeHTML(a.function));badges.push(badgeHTML(a.ai_focus?a.ai_focus+' AI focus':null));badges.push(badgeHTML(a.org_signal));}
+  if(p.orgSize)badges.push(badgeHTML(p.orgSize));
+  if(p.comp)badges.push(`<span class="badge badge-amber">${esc(p.comp)} comp</span>`);
+  if(p.source)badges.push(`<span class="badge badge-gray">${esc(p.source)}</span>`);
+  document.getElementById('d-badges').innerHTML=badges.join('');
+  document.getElementById('d-fit-editor').innerHTML=['High','Medium','Low'].map(v=>`<button class="fit-opt ${p.fit===v?'selected-'+v.toLowerCase():''}" onclick="setFitDetail('${id}','${v}')">${v}</button>`).join('')+(p.fit?`<button class="fit-opt" onclick="setFitDetail('${id}',null)" style="font-size:10px;color:var(--text3);">✕</button>`:'');
+  const resp=a&&!a._error?(a.responsibilities||[]):[];
+  document.getElementById('d-responsibilities').innerHTML=`<div class="card-title">Responsibilities</div>${resp.length?'<div style="display:flex;flex-wrap:wrap;gap:6px;">'+resp.map(r=>`<span class="pill">${esc(r)}</span>`).join('')+'</div>':'<div style="font-size:12px;color:var(--text3);">'+(a?'None extracted.':'Analyzing…')+'</div>'}`;
+  const quals=a&&!a._error?(a.qualifications||[]):[];
+  document.getElementById('d-qualifications').innerHTML=`<div class="card-title">Qualifications</div>${quals.length?'<div style="display:flex;flex-wrap:wrap;gap:6px;">'+quals.map(q=>`<span class="pill">${esc(q)}</span>`).join('')+'</div>':'<div style="font-size:12px;color:var(--text3);">'+(a?'None extracted.':'Analyzing…')+'</div>'}`;
+  const kws=a&&!a._error?(a.keywords||[]):[];
+  document.getElementById('d-keywords-card').innerHTML=`<div class="card-title">Keywords &amp; skills</div>${kws.length?'<div style="display:flex;flex-wrap:wrap;gap:6px;">'+kws.map(k=>{const inP=PROFILE.skills.some(s=>s.includes(k)||k.includes(s)||s.split(' ').some(w=>w.length>3&&k.includes(w)));return `<span class="pill ${inP?'pill-teal':''}">${esc(k)}</span>`;}).join('')+'</div><div style="font-size:11px;color:var(--text3);margin-top:8px;">Green = in your profile</div>':'<div style="font-size:12px;color:var(--text3);">'+(a?'None extracted.':'Analyzing…')+'</div>'}`;
+  const caps=a&&!a._error?(a.capability_signals||[]):[];
+  const inds=a&&!a._error?(a.industry_signals||[]):[];
+  const gapFlags=a&&!a._error?(a.gap_flags||[]):[];
+  const plSignal=a&&!a._error?a.requires_pl:'';
+  const teamSignal=a&&!a._error?a.requires_large_team:'';
+  let capHTML=`<div class="card-title">Your capabilities signaled</div>`;
+  capHTML+=caps.length?'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">'+caps.map(c=>`<span class="pill pill-teal">${esc(c)}</span>`).join('')+'</div>':'<div style="font-size:12px;color:var(--text3);margin-bottom:12px;">'+(a?'None detected.':'Analyzing…')+'</div>';
+  if(inds.length) capHTML+=`<div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em;">Industries</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">${inds.map(i=>`<span class="pill">${esc(i)}</span>`).join('')}</div>`;
+  if(plSignal==='Yes'||teamSignal==='Yes'){capHTML+=`<div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em;">Watch signals</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">`;if(plSignal==='Yes')capHTML+=`<span class="pill" style="background:var(--amber-bg);color:var(--amber);">P&amp;L ownership likely required</span>`;if(teamSignal==='Yes')capHTML+=`<span class="pill" style="background:var(--amber-bg);color:var(--amber);">Large team ownership likely required</span>`;capHTML+=`</div>`;}
+  if(gapFlags.length) capHTML+=`<div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em;">Honest gap flags</div><div style="display:flex;flex-direction:column;gap:5px;">${gapFlags.map(g=>`<div style="font-size:12px;color:var(--red);background:var(--red-bg);padding:5px 10px;border-radius:var(--radius-sm);">${esc(g)}</div>`).join('')}</div>`;
+  document.getElementById('d-capabilities-card').innerHTML=capHTML;
+  document.getElementById('d-rationale').value=p.fitRationale||'';
+  document.getElementById('d-notes').value=p.notes||'';
+  document.getElementById('rationale-saved').textContent='';
+  document.getElementById('notes-saved').textContent='';
+  document.getElementById('d-remove-btn').onclick=()=>{if(confirm('Remove this posting?')){atDelete(id);postings=postings.filter(x=>x.id!==id);document.getElementById('count-badge').textContent=postings.length;closeDetail();renderPostingsList();toast('Posting removed.');}};
+  window.scrollTo(0,0);
+}
+
+function closeDetail() {
+  currentDetailId=null;
+  document.getElementById('main-panels').style.display='';
+  document.getElementById('detail-panel').style.display='none';
+}
+
+async function saveDetail() {
+  if(!currentDetailId)return;
+  const p=postings.find(x=>x.id===currentDetailId); if(!p)return;
+  const rationale=document.getElementById('d-rationale').value;
+  const notes=document.getElementById('d-notes').value;
+  if(rationale===p.fitRationale&&notes===p.notes)return;
+  p.fitRationale=rationale; p.notes=notes;
+  document.getElementById('rationale-saved').textContent='Saving…';
+  document.getElementById('notes-saved').textContent='Saving…';
+  try {
+    await atUpdate(currentDetailId,{FitRationale:rationale,Notes:notes});
+    document.getElementById('rationale-saved').textContent='Saved';
+    document.getElementById('notes-saved').textContent='Saved';
+    setTimeout(()=>{document.getElementById('rationale-saved').textContent='';document.getElementById('notes-saved').textContent='';},2000);
+  } catch(e) { document.getElementById('rationale-saved').textContent='Save failed'; }
+}
+
+async function setFitDetail(id,val) {
+  const p=postings.find(x=>x.id===id); if(!p)return;
+  p.fit=val;
+  openDetail(id);
+  try { await atUpdate(id,{Fit:val||''}); } catch(e) { toast('Failed to save fit score.'); }
+}
+
+// ── PATTERNS ──────────────────────────────────────────────────────────────────
+function renderPatterns() {
+  const el=document.getElementById('patterns-content');
+  const analyzed=getAnalyzed();
+  if(!analyzed.length){el.innerHTML='<div class="empty"><div class="empty-icon">📊</div>'+(postings.length?'Analysis in progress…':'Add postings to see patterns.')+'</div>';return;}
+  const seniority=countMap(analyzed.map(p=>p.analysis.seniority));
+  const fn=countMap(analyzed.map(p=>p.analysis.function));
+  const ai=countMap(analyzed.map(p=>p.analysis.ai_focus));
+  const orgSig=countMap(analyzed.map(p=>p.analysis.org_signal));
+  const sizes=countMap(postings.filter(p=>p.orgSize).map(p=>p.orgSize));
+  const fits=countMap(postings.filter(p=>p.fit).map(p=>p.fit));
+  const topResp=topN(analyzed.flatMap(p=>p.analysis.responsibilities||[]),6);
+  const topQual=topN(analyzed.flatMap(p=>p.analysis.qualifications||[]),6);
+  const topCap=topN(analyzed.flatMap(p=>p.analysis.capability_signals||[]),6);
+  const bChart=(map,color)=>{const e=Object.entries(map).sort((a,b)=>b[1]-a[1]);const mx=e[0]?.[1]||1;return e.map(([k,v])=>barRow(k,v,mx,color)).join('');};
+  el.innerHTML=`<div class="grid-4" style="margin-bottom:1.25rem;"><div class="metric"><div class="metric-label">Analyzed</div><div class="metric-val">${analyzed.length}</div></div><div class="metric"><div class="metric-label">High fit</div><div class="metric-val">${fits['High']||0}</div><div class="metric-sub">of ${postings.filter(p=>p.fit).length} scored</div></div><div class="metric"><div class="metric-label">High AI focus</div><div class="metric-val">${ai['High']||0}</div></div><div class="metric"><div class="metric-label">Top seniority</div><div class="metric-val" style="font-size:16px;">${Object.entries(seniority).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—'}</div></div></div><div class="grid-2"><div class="card"><div class="card-title">Seniority mix</div>${bChart(seniority,'#378ADD')}</div><div class="card"><div class="card-title">Function mix</div>${bChart(fn,'#1D9E75')}</div></div><div class="grid-2"><div class="card"><div class="card-title">AI focus</div>${bChart(ai,'#D85A30')}</div><div class="card"><div class="card-title">Role type signal</div>${Object.keys(orgSig).length?bChart(orgSig,'#533AB7'):'<div style="font-size:12px;color:var(--text3);">No signals yet.</div>'}</div></div>${Object.keys(sizes).length?`<div class="grid-2"><div class="card"><div class="card-title">Org size</div>${bChart(sizes,'#185FA5')}</div><div class="card"><div class="card-title">Fit scores</div>${Object.keys(fits).length?bChart(fits,'#3B6D11'):'<div style="font-size:12px;color:var(--text3);">None set yet.</div>'}</div></div>`:''}<div class="grid-2"><div class="card"><div class="card-title">Common responsibilities</div>${topResp.map(([k,v])=>barRow(k,v,analyzed.length,'#BA7517')).join('')}</div><div class="card"><div class="card-title">Common qualifications</div>${topQual.map(([k,v])=>barRow(k,v,analyzed.length,'#533AB7')).join('')}</div></div><div class="card"><div class="card-title">Your capabilities most rewarded</div>${topCap.length?topCap.map(([k,v])=>barRow(k,v,analyzed.length,'#0F6E56')).join(''):'<div style="font-size:12px;color:var(--text3);">Will appear as postings are analyzed.</div>'}</div>`;
+}
+
+// ── COMPARE ───────────────────────────────────────────────────────────────────
+function renderCompare() {
+  const el=document.getElementById('compare-content');
+  const analyzed=getAnalyzed();
+  if(analyzed.length<2){el.innerHTML='<div class="empty"><div class="empty-icon">⚖️</div>'+(postings.length?'Analysis in progress…':'Add at least two postings.')+'</div>';return;}
+  const cols=analyzed.slice(0,5);
+  const rows=[{label:'Fit score',fn:p=>fitBadge(p.fit)},{label:'Seniority',fn:p=>badgeHTML(p.analysis.seniority)},{label:'Function',fn:p=>badgeHTML(p.analysis.function)},{label:'AI focus',fn:p=>badgeHTML(p.analysis.ai_focus)},{label:'Org size',fn:p=>p.orgSize?badgeHTML(p.orgSize):'<span style="color:var(--text3);font-size:12px;">—</span>'},{label:'Comp',fn:p=>p.comp?badgeHTML(p.comp):'<span style="color:var(--text3);font-size:12px;">not listed</span>'},{label:'Role type',fn:p=>badgeHTML(p.analysis.org_signal)},{label:'Summary',fn:p=>`<span style="font-size:12px;color:var(--text2);">${esc(p.analysis.summary||'—')}</span>`},{label:'Responsibilities',fn:p=>(p.analysis.responsibilities||[]).map(r=>`<div style="font-size:12px;margin-bottom:3px;">${esc(r)}</div>`).join('')},{label:'Qualifications',fn:p=>(p.analysis.qualifications||[]).map(q=>`<div style="font-size:12px;margin-bottom:3px;">${esc(q)}</div>`).join('')},{label:'Capabilities',fn:p=>(p.analysis.capability_signals||[]).map(c=>`<div style="font-size:12px;margin-bottom:3px;color:var(--teal);">${esc(c)}</div>`).join('')}];
+  const colW=Math.floor(85/cols.length);
+  el.innerHTML=`<div style="overflow-x:auto;"><table class="compare-table"><thead><tr><th class="attr-col">Attribute</th>${cols.map(p=>`<th style="width:${colW}%;">${esc(p.title)}${p.company?`<br><span style="font-weight:400;color:var(--text3);font-size:11px;">${esc(p.company)}</span>`:''}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr><td class="attr-col">${r.label}</td>${cols.map(p=>`<td>${r.fn(p)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${analyzed.length>5?`<div style="font-size:12px;color:var(--text3);margin-top:8px;">Showing 5 of ${analyzed.length}.</div>`:''}`;
+}
+
+// ── KEYWORDS ──────────────────────────────────────────────────────────────────
+function renderKeywords() {
+  const el=document.getElementById('keywords-content');
+  const analyzed=getAnalyzed();
+  if(!analyzed.length){el.innerHTML='<div class="empty"><div class="empty-icon">🔑</div>'+(postings.length?'Analyzing…':'Add postings.')+'</div>';return;}
+  const freq={};
+  analyzed.flatMap(p=>(p.analysis.keywords||[]).map(k=>k.toLowerCase().trim())).filter(Boolean).forEach(k=>freq[k]=(freq[k]||0)+1);
+  const sorted=Object.entries(freq).sort((a,b)=>b[1]-a[1]);
+  const max=sorted[0]?.[1]||1;
+  const palette=['#185FA5','#1D9E75','#533AB7','#BA7517','#993C1D','#3B6D11','#A32D2D','#0F6E56','#D85A30'];
+  el.innerHTML=`<div class="grid-2"><div class="card"><div class="card-title">Top 10 by frequency</div>${sorted.slice(0,10).map(([k,v],i)=>barRow(k,v,max,palette[i%palette.length])).join('')}</div><div class="card"><div class="card-title">Your skills in demand</div>${sorted.filter(([k])=>PROFILE.skills.some(s=>s.includes(k)||k.includes(s)||s.split(' ').some(w=>w.length>3&&k.includes(w)))).slice(0,10).map(([k,v])=>barRow(k,v,max,'#1D9E75')).join('')||'<div style="font-size:12px;color:var(--text3);">None detected yet.</div>'}</div></div><div class="card"><div class="card-title">All terms <span style="font-weight:400;color:var(--text3);">(${sorted.length})</span></div><div class="tag-cloud">${sorted.map(([k,v])=>{const inP=PROFILE.skills.some(s=>s.includes(k)||k.includes(s)||s.split(' ').some(w=>w.length>3&&k.includes(w)));const size=v===max?15:v>=max*0.6?13:12;const col=inP?'#0F6E56':v===max?'#185FA5':v>=max*0.6?'#533AB7':'#5F5E5A';const bg=inP?'#E1F5EE':v===max?'#E6F1FB':v>=max*0.6?'#EEEDFE':'#F1EFE8';return `<span class="kw-tag" style="background:${bg};color:${col};font-size:${size}px;">${esc(k)} ${v}</span>`;}).join('')}</div><div style="font-size:11px;color:var(--text3);margin-top:10px;">Green = in your profile</div></div>`;
+}
+
+// ── GAP ANALYSIS ──────────────────────────────────────────────────────────────
+function renderGap() {
+  const el=document.getElementById('gap-content');
+  const analyzed=getAnalyzed();
+  if(!analyzed.length){el.innerHTML='<div class="empty"><div class="empty-icon">🎯</div>'+(postings.length?'Analyzing…':'Add postings.')+'</div>';return;}
+  const freq={};
+  analyzed.flatMap(p=>(p.analysis.keywords||[]).map(k=>k.toLowerCase().trim())).filter(Boolean).forEach(k=>freq[k]=(freq[k]||0)+1);
+  const sorted=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,20);
+  const maxFreq=sorted[0]?.[1]||1;
+  const items=sorted.map(([k,v])=>({skill:k,demand:v/maxFreq,have:PROFILE.skills.some(s=>s.includes(k)||k.includes(s)||s.split(' ').some(w=>w.length>3&&k.includes(w))),count:v}));
+  const strong=items.filter(i=>i.have); const gaps=items.filter(i=>!i.have);
+  const capFreq={};
+  analyzed.flatMap(p=>p.analysis.capability_signals||[]).forEach(c=>{const k=c.toLowerCase().trim();capFreq[k]=(capFreq[k]||0)+1;});
+  const topCaps=Object.entries(capFreq).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  el.innerHTML=`<div class="grid-3" style="margin-bottom:1.25rem;"><div class="metric"><div class="metric-label">Skills matched</div><div class="metric-val">${strong.length}</div><div class="metric-sub">of ${items.length} in demand</div></div><div class="metric"><div class="metric-label">Skill gaps</div><div class="metric-val">${gaps.length}</div></div><div class="metric"><div class="metric-label">Coverage</div><div class="metric-val">${Math.round(strong.length/(items.length||1)*100)}%</div></div></div><div class="grid-2"><div class="card"><div class="card-title">Skill demand vs. your profile</div><div style="display:flex;gap:16px;font-size:11px;color:var(--text3);margin-bottom:12px;"><span>● <span style="color:var(--teal);">green</span> = match</span><span>● <span style="color:var(--red);">red</span> = gap</span></div>${items.map(i=>`<div class="gap-row"><div class="gap-skill">${esc(i.skill)}</div><div style="flex:2;background:var(--surface2);border-radius:4px;height:7px;overflow:hidden;"><div style="height:100%;border-radius:4px;width:${Math.round(i.demand*100)}%;background:${i.have?'#1D9E75':'#E24B4A'};"></div></div><div class="gap-result" style="color:${i.have?'var(--green)':'var(--red)'};">${i.have?'✓ match':'gap'}</div></div>`).join('')}</div><div><div class="card"><div class="card-title">Capabilities in demand</div>${topCaps.length?topCaps.map(([k,v])=>barRow(k,v,topCaps[0]?.[1]||1,'#0F6E56')).join(''):'<div style="font-size:12px;color:var(--text3);">Will appear as postings are analyzed.</div>'}</div>${gaps.length?`<div class="card"><div class="card-title">Priority gaps</div><div class="tag-cloud">${gaps.slice(0,10).map(i=>`<span class="kw-tag" style="background:var(--red-bg);color:var(--red);">${esc(i.skill)} ${i.count}</span>`).join('')}</div></div>`:`<div class="card" style="background:var(--green-bg);border-color:#9FE1CB;"><div style="font-size:13px;color:var(--green);">Strong match.</div></div>`}</div></div><div class="card"><div class="card-title">Your 11 capabilities — signaled in postings</div>${PROFILE.capabilities.map(cap=>{const key=cap.toLowerCase().split(' ').slice(0,4).join(' ');const matched=analyzed.some(p=>(p.analysis.capability_signals||[]).some(s=>s.toLowerCase().includes(key.substring(0,20))||key.includes(s.toLowerCase().substring(0,20))));return `<div class="cap-row"><div style="flex:1;">${esc(cap)}</div><div style="font-size:11px;min-width:60px;text-align:right;color:${matched?'var(--green)':'var(--text3)'};">${matched?'✓ signaled':'—'}</div></div>`;}).join('')}</div>`;
+}
+
+// ── PROFILE ───────────────────────────────────────────────────────────────────
+function renderProfile() {
+  const colors=['badge-blue','badge-teal','badge-purple','badge-amber','badge-gray'];
+  document.getElementById('profile-skills').innerHTML=PROFILE.skills.map((s,i)=>`<span class="badge ${colors[i%colors.length]}" style="margin:2px;">${esc(s)}</span>`).join('');
+  document.getElementById('profile-caps').innerHTML=PROFILE.capabilities.map((c,i)=>`<div class="cap-row"><span style="font-size:11px;font-weight:600;color:var(--text3);min-width:20px;">${i+1}</span><div>${esc(c)}</div></div>`).join('');
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+atLoadAll();
+</script>
+</body>
+</html>
