@@ -1,5 +1,7 @@
 [build]
+  command = "echo 'build complete'"
   functions = "netlify/functions"
+  publish = "."
 
 [functions]
   node_bundler = "esbuild"
