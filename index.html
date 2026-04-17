@@ -203,7 +203,7 @@
       <div class="card" id="d-responsibilities"></div>
       <div class="card" id="d-qualifications"></div>
     </div>
-    <div class="card" id="d-gap-flags" style="margin-bottom:1rem;"></div>
+    <div id="d-gap-flags" style="margin-bottom:1rem;"></div>
 
     <div class="card" style="margin-bottom:1rem;">
       <div class="card-title">Fit rationale <span class="save-indicator" id="rationale-saved"></span></div>
@@ -533,9 +533,14 @@ async function analyzePosting(id) {
 
 function matchesProfile(phrase) {
   const p = phrase.toLowerCase();
-  return PROFILE.skills.some(s => p.includes(s) || s.includes(p) || s.split(' ').some(w => w.length > 3 && p.includes(w))) ||
-    PROFILE.capabilities.some(c => c.toLowerCase().split(' ').slice(0,4).some(w => w.length > 3 && p.includes(w))) ||
-    PROFILE.differentiators.some(d => d.toLowerCase().split(' ').slice(0,4).some(w => w.length > 3 && p.includes(w)));
+  // Strict matching: at least 2 profile skills must appear in the phrase, OR one skill with 4+ chars is a strong exact match
+  const skillMatches = PROFILE.skills.filter(s => {
+    if (s.length >= 6 && p.includes(s)) return true;
+    // multi-word skills: all words must appear
+    const words = s.split(' ').filter(w => w.length > 3);
+    return words.length >= 2 && words.every(w => p.includes(w));
+  });
+  return skillMatches.length >= 1;
 }
 
 // ── DETAIL VIEW ───────────────────────────────────────────────────────────────
