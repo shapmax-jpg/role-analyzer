@@ -518,7 +518,7 @@ function renderPostingsList() {
 async function analyzePosting(id) {
   const p=postings.find(x=>x.id===id); if(!p)return;
   try {
-    const resp=await fetch('/api/anthropic',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:`Analyze this job posting against this candidate profile. Return ONLY a JSON object, no markdown, no preamble.\n\nCANDIDATE: Director-level CX and AI strategist, 17 years experience. Strong in: opportunity framing, research-anchored strategy, B2B2C systems, AI operationalization, cross-functional alignment, commercial instinct. Known gaps: no formal P&L ownership, no large team ownership, directs quant research but doesn't run it independently.\n\nReturn:\n{"seniority":"C-suite|VP|Director|Senior Manager|Manager|Individual Contributor","function":"CX|AI/ML|Strategy|Product|Consulting|Operations|Other","ai_focus":"High|Medium|Low|None","org_signal":"New role|Backfill|Transformation|Unclear","requires_pl":"Yes|No|Unclear","requires_large_team":"Yes|No|Unclear","responsibilities":["6-8 short phrases, covering all key responsibilities"],"qualifications":["6-8 short phrases, covering ALL qualifications listed — do not omit any"],"keywords":["10-14 single skills lowercase"],"capability_signals":["2-4 phrases matching candidate capabilities: surfacing customer problems, strategy-to-delivery gap, AI to modernize CX, whole system design, alignment and mobilization, portfolio shaping, operating model design, team growth, practice building, cross-functional focus, staying anchored to real problems"],"gap_flags":["0-3 things this role requires that the candidate genuinely lacks — be specific and honest, not generic"],"industry_signals":["1-3 industries"],"summary":"One sentence max 18 words."}\n\nTitle: ${p.title}\nCompany: ${p.company||'not specified'}\nText:\n${p.text.substring(0,3500)}`}]})});
+    const resp=await fetch('/api/anthropic',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:`Analyze this job posting against this candidate profile. Return ONLY a JSON object, no markdown, no preamble.\n\nCANDIDATE: Director-level CX and AI strategist, 17 years experience. Strong in: opportunity framing, research-anchored strategy, B2B2C systems, AI operationalization, cross-functional alignment, commercial instinct. Known gaps: no formal P&L ownership, no large team ownership, directs quant research but doesn't run it independently.\n\nReturn:\n{"seniority":"C-suite|VP|Director|Senior Manager|Manager|Individual Contributor","function":"CX|AI/ML|Strategy|Product|Consulting|Operations|Other","ai_focus":"High|Medium|Low|None","org_signal":"New role|Backfill|Transformation|Unclear","requires_pl":"Yes|No|Unclear","requires_large_team":"Yes|No|Unclear","responsibilities":["6-8 short phrases, covering all key responsibilities"],"responsibilities_met":[indices of responsibilities the candidate meets, e.g. [0,2,4]],"qualifications":["6-8 short phrases, covering ALL qualifications listed — do not omit any"],"qualifications_met":[indices of qualifications the candidate meets, e.g. [1,3]],"keywords":["10-14 single skills lowercase"],"capability_signals":["2-4 phrases matching candidate capabilities: surfacing customer problems, strategy-to-delivery gap, AI to modernize CX, whole system design, alignment and mobilization, portfolio shaping, operating model design, team growth, practice building, cross-functional focus, staying anchored to real problems"],"gap_flags":["0-3 things this role requires that the candidate genuinely lacks — be specific and honest, not generic"],"industry_signals":["1-3 industries"],"summary":"One sentence max 18 words."}\n\nTitle: ${p.title}\nCompany: ${p.company||'not specified'}\nText:\n${p.text.substring(0,3500)}`}]})});
     const data=await resp.json();
     p.analysis=JSON.parse((data.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim());
     renderPostingsList();
@@ -533,14 +533,19 @@ async function analyzePosting(id) {
 
 function matchesProfile(phrase) {
   const p = phrase.toLowerCase();
-  // Strict matching: at least 2 profile skills must appear in the phrase, OR one skill with 4+ chars is a strong exact match
-  const skillMatches = PROFILE.skills.filter(s => {
+  // Match against skills list
+  const skillMatch = PROFILE.skills.some(s => {
     if (s.length >= 6 && p.includes(s)) return true;
-    // multi-word skills: all words must appear
-    const words = s.split(' ').filter(w => w.length > 3);
+    const words = s.split(' ').filter(w => w.length > 4);
     return words.length >= 2 && words.every(w => p.includes(w));
   });
-  return skillMatches.length >= 1;
+  if (skillMatch) return true;
+  // Match against capabilities
+  const capMatch = PROFILE.capabilities.some(c => {
+    const words = c.toLowerCase().split(' ').filter(w => w.length > 5);
+    return words.filter(w => p.includes(w)).length >= 2;
+  });
+  return capMatch;
 }
 
 // ── DETAIL VIEW ───────────────────────────────────────────────────────────────
@@ -560,9 +565,13 @@ function openDetail(id) {
   document.getElementById('d-badges').innerHTML=badges.join('');
   document.getElementById('d-fit-editor').innerHTML=['High','Medium','Low'].map(v=>`<button class="fit-opt ${p.fit===v?'selected-'+v.toLowerCase():''}" onclick="setFitDetail('${id}','${v}')">${v}</button>`).join('')+(p.fit?`<button class="fit-opt" onclick="setFitDetail('${id}',null)" style="font-size:10px;color:var(--text3);">✕</button>`:'');
   const resp=a&&!a._error?(a.responsibilities||[]):[];
-  document.getElementById('d-responsibilities').innerHTML=`<div class="card-title">Responsibilities</div>${resp.length?'<div style="display:flex;flex-direction:column;gap:6px;">'+resp.map(r=>{const match=matchesProfile(r);return `<div style="font-size:13px;padding:6px 10px;border-radius:var(--radius-sm);background:${match?'var(--green-bg)':'var(--red-bg)'};color:${match?'var(--green)':'var(--red)'};">${esc(r)}</div>`;}).join('')+'</div>':'<div style="font-size:12px;color:var(--text3);">'+(a?'None extracted.':'Analyzing…')+'</div>'}`;
+  const respMet = new Set(a&&!a._error?(a.responsibilities_met||[]):[]);
+  const useRespMet = respMet.size > 0;
+  document.getElementById('d-responsibilities').innerHTML=`<div class="card-title">Responsibilities</div>${resp.length?'<div style="display:flex;flex-direction:column;gap:6px;">'+resp.map((r,i)=>{const match=useRespMet?respMet.has(i):matchesProfile(r);return `<div style="font-size:13px;padding:7px 12px;border-radius:var(--radius-sm);background:${match?'var(--green-bg)':'var(--surface2)'};color:${match?'var(--green)':'var(--text2)'};">${esc(r)}</div>`;}).join('')+'</div>':'<div style="font-size:12px;color:var(--text3);">'+(a?'None extracted.':'Analyzing…')+'</div>'}`;
   const quals=a&&!a._error?(a.qualifications||[]):[];
-  document.getElementById('d-qualifications').innerHTML=`<div class="card-title">Qualifications</div>${quals.length?'<div style="display:flex;flex-direction:column;gap:6px;">'+quals.map(q=>{const match=matchesProfile(q);return `<div style="font-size:13px;padding:6px 10px;border-radius:var(--radius-sm);background:${match?'var(--green-bg)':'var(--red-bg)'};color:${match?'var(--green)':'var(--red)'};">${esc(q)}</div>`;}).join('')+'</div>':'<div style="font-size:12px;color:var(--text3);">'+(a?'None extracted.':'Analyzing…')+'</div>'}`;
+  const qualsMet = new Set(a&&!a._error?(a.qualifications_met||[]):[]);
+  const useQualsMet = qualsMet.size > 0;
+  document.getElementById('d-qualifications').innerHTML=`<div class="card-title">Qualifications</div>${quals.length?'<div style="display:flex;flex-direction:column;gap:6px;">'+quals.map((q,i)=>{const match=useQualsMet?qualsMet.has(i):matchesProfile(q);return `<div style="font-size:13px;padding:7px 12px;border-radius:var(--radius-sm);background:${match?'var(--green-bg)':'var(--surface2)'};color:${match?'var(--green)':'var(--text2)'};">${esc(q)}</div>`;}).join('')+'</div>':'<div style="font-size:12px;color:var(--text3);">'+(a?'None extracted.':'Analyzing…')+'</div>'}`;
   const kws=a&&!a._error?(a.keywords||[]):[];
   document.getElementById('d-keywords-card').innerHTML=`<div class="card-title">Keywords &amp; skills</div>${kws.length?'<div style="display:flex;flex-wrap:wrap;gap:6px;">'+kws.map(k=>{const inP=PROFILE.skills.some(s=>s.includes(k)||k.includes(s)||s.split(' ').some(w=>w.length>3&&k.includes(w)));return `<span class="pill ${inP?'pill-teal':''}">${esc(k)}</span>`;}).join('')+'</div><div style="font-size:11px;color:var(--text3);margin-top:8px;">Green = in your profile</div>':'<div style="font-size:12px;color:var(--text3);">'+(a?'None extracted.':'Analyzing…')+'</div>'}`;
   // capabilities removed
